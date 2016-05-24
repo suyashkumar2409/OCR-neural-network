@@ -28,10 +28,12 @@ class Network(object):
 		return sum(int(x==y) for (x,y) in testresults)
 		
 	def feedforward(self,x):
-		for l in xrange(1,len(self.sizes)-1):
-			x = sigmoid(np.dot(self.weights[l-1],x) + self.biases[l-1])
+	
+		a = x
+		for b,w in zip(self.biases,self.weights):
+			a = sigmoid(np.dot(w,a) + b)
 		
-		return x
+		return a
 	
 	def graddesc(self,trainingdata,epochs,minibatchsize,eta,testdata = None):
 		traininglen = len(trainingdata)
@@ -56,17 +58,17 @@ class Network(object):
 				print "Epoch {0}".format(i)
 				
 	def relax(self,mini,eta):	
+		biastemp = ([np.zeros(b.shape) for b in self.biases])
+		weighttemp = ([np.zeros(w.shape) for w in self.weights])
+	
 		for x,y in mini:
 
 			deltabias,deltaweight = self.backprop(x,y)
 
-			biastemp = biastemp + np.array(deltabias)
+			biastemp = [b+db for b,db in zip(biastemp,deltabias)]
 	
-			weighttemp = weighttemp + np.array(deltaweight)
+			weighttemp = [w+dw for w,dw in zip(weighttemp,deltaweight)]
 			 
-		biastemp = list(biastemp)
-		weighttemp = list(weighttemp)
-
 		self.biases = [b - (eta/len(mini))*db for b,db in zip(self.biases,biastemp)]
 		self.weights = [w - (eta/len(mini))*dw for w,dw in zip(self.weights,weighttemp)]
 
@@ -95,8 +97,8 @@ class Network(object):
 		bret[-1] = delta
 
 		wret[-1] = np.dot(delta,activations[-2].transpose())
-		for i in xrange(2,len(self.weights)):
-			delta = np.dot(self.weights[-l+1].transpose,delta)*sigmoidprime(zs[-l])
+		for l in xrange(2,self.num_layers):
+			delta = np.dot(self.weights[-l+1].transpose(),delta)*sigmoidprime(zs[-l])
 	
 			bret[-l] = delta
 			wret[-l] = np.dot(delta,activations[-l-1].transpose())
