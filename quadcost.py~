@@ -47,7 +47,7 @@ class Network(object):
 			minibatches = [trainingdata[j:j+minibatchsize] for j in xrange(0,traininglen,minibatchsize)]
 
 			for mini in minibatches:
-				self.update_mini_batch(mini,eta)
+				self.relax(mini,eta)
 
 			if testdata:
 				print "Epoch {0}: {1} / {2}".format(i,self.evaluate(testdata),testlen)
@@ -55,16 +55,6 @@ class Network(object):
 			else:
 				print "Epoch {0}".format(i)
 				
-	def update_mini_batch(self, mini_batch, eta):
-		nabla_b = [np.zeros(b.shape) for b in self.biases]
-		nabla_w = [np.zeros(w.shape) for w in self.weights]
-		for x, y in mini_batch:
-			delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-			nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-			nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
-		self.weights = [w-(eta/len(mini_batch))*nw for w, nw in zip(self.weights, nabla_w)]
-        self.biases = [b-(eta/len(mini_batch))*nb for b, nb in zip(self.biases, nabla_b)]
-
 	def relax(self,mini,eta):	
 		for x,y in mini:
 
@@ -79,7 +69,9 @@ class Network(object):
 
 		self.biases = [b - (eta/len(mini))*db for b,db in zip(self.biases,biastemp)]
 		self.weights = [w - (eta/len(mini))*dw for w,dw in zip(self.weights,weighttemp)]
-	
+
+        
+        
 	def backprop(self,x,y):
 		bret = [np.zeros(b.shape) for b in self.biases]
 		wret = [np.zeros(w.shape) for w in self.weights]
@@ -97,23 +89,17 @@ class Network(object):
 
 			lastactivation = a
 
-		deltas = [np.zeros(a.shape) for a in activations]
 
-		deltal = (activations[-1]-y)*sigmoidderiviative(zs[-1])
+		delta = (activations[-1]-y)*sigmoidderiviative(zs[-1])
 		
-		bret[-1] = deltal
+		bret[-1] = delta
 
-		wret[-1] = np.dot(deltal,activations[-2].transpose())
-
-		deltas[-1] = deltal
-
+		wret[-1] = np.dot(delta,activations[-2].transpose())
 		for i in xrange(2,len(self.weights)):
-			deltacurr = np.dot(self.weights[-l+1].transpose,deltas[-l+1])*sigmoidprime(zs[-l])
-			deltas[-l] = deltacurr
-
-			bret[-l] = deltacurr
-
-			wret[-l] = np.dot(deltacurr,activations[-l-1].transpose())
+			delta = np.dot(self.weights[-l+1].transpose,delta)*sigmoidprime(zs[-l])
+	
+			bret[-l] = delta
+			wret[-l] = np.dot(delta,activations[-l-1].transpose())
 
 		return bret,wret
 				
