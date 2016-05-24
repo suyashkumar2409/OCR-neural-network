@@ -9,7 +9,7 @@ def sigmoidderiviative(x):
 
 	return (1.0-temp)*temp
 
-
+	
 class Network(object):
 	def __init__(self,sizes):
 	
@@ -18,40 +18,54 @@ class Network(object):
 		self.num_layers = len(sizes)
 		self.biases = [np.random.randn(y,1) for y in sizes[1:]]
 		### If aX1 and bX1 then weight is bXa ###
-		self.weights = [np.random.randn(y,x) for x,y in zip(sizes[:-1],sizes[1:])
+		self.weights = [np.random.randn(y,x) for x,y in zip(sizes[:-1],sizes[1:])]
 
+
+	def evaluate(self,testingdata):	
+		testresults = [(np.argmax(self.feedforward(x)),y) for (x,y) in testingdata]
+		
+		
+		return sum(int(x==y) for (x,y) in testresults)
+		
 	def feedforward(self,x):
 		for l in xrange(1,len(self.sizes)-1):
 			x = sigmoid(np.dot(self.weights[l-1],x) + self.biases[l-1])
 		
 		return x
-
-	def graddesc(self,x,y,epochs,minibatchsize,eta,trainingdata,testdata = None):
+	
+	def graddesc(self,trainingdata,epochs,minibatchsize,eta,testdata = None):
 		traininglen = len(trainingdata)
 
 		testlen = -1
 		if testdata:
-			testlen = len(testingdata)
+			testlen = len(testdata)
 
-		for i = xrange(1,epochs):
+		for i in xrange(1,epochs):
 			random.shuffle(trainingdata)
 
 
 			minibatches = [trainingdata[j:j+minibatchsize] for j in xrange(0,traininglen,minibatchsize)]
 
 			for mini in minibatches:
-				self.relax(mini,eta)
+				self.update_mini_batch(mini,eta)
 
 			if testdata:
-				print "Epoch {0}: {1} / {2}".format(i,self.evaluate(testingdata),testlen)
+				print "Epoch {0}: {1} / {2}".format(i,self.evaluate(testdata),testlen)
 
 			else:
 				print "Epoch {0}".format(i)
+				
+	def update_mini_batch(self, mini_batch, eta):
+		nabla_b = [np.zeros(b.shape) for b in self.biases]
+		nabla_w = [np.zeros(w.shape) for w in self.weights]
+		for x, y in mini_batch:
+			delta_nabla_b, delta_nabla_w = self.backprop(x, y)
+			nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+			nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+		self.weights = [w-(eta/len(mini_batch))*nw for w, nw in zip(self.weights, nabla_w)]
+        self.biases = [b-(eta/len(mini_batch))*nb for b, nb in zip(self.biases, nabla_b)]
 
-	def relax(self,mini,eta):
-		biastemp = np.array([np.zeros(b.shape) for b in self.biases])
-		weighttemp = np.array([np.zeros(w.shape) for w in self.weights])
-
+	def relax(self,mini,eta):	
 		for x,y in mini:
 
 			deltabias,deltaweight = self.backprop(x,y)
@@ -63,11 +77,10 @@ class Network(object):
 		biastemp = list(biastemp)
 		weighttemp = list(weighttemp)
 
-		self.biases = [b - (eta/len(mini)*db for b,db in zip(self.biases,biastemp)]
-		self.weights = [w - (eta/len(mini)*dw for w,dw in zip(self.weights,weighttemp)]
-
+		self.biases = [b - (eta/len(mini))*db for b,db in zip(self.biases,biastemp)]
+		self.weights = [w - (eta/len(mini))*dw for w,dw in zip(self.weights,weighttemp)]
+	
 	def backprop(self,x,y):
-
 		bret = [np.zeros(b.shape) for b in self.biases]
 		wret = [np.zeros(w.shape) for w in self.weights]
 
@@ -86,7 +99,7 @@ class Network(object):
 
 		deltas = [np.zeros(a.shape) for a in activations]
 
-		deltal = (activations[-1]-y)*sigmoidprime(zs[-1])
+		deltal = (activations[-1]-y)*sigmoidderiviative(zs[-1])
 		
 		bret[-1] = deltal
 
@@ -94,8 +107,8 @@ class Network(object):
 
 		deltas[-1] = deltal
 
-		for i = xrange(2,len(self.weights)):
-			deltacurr = np.dot(self.weights[-l].transpose,deltas[-l+1])
+		for i in xrange(2,len(self.weights)):
+			deltacurr = np.dot(self.weights[-l+1].transpose,deltas[-l+1])*sigmoidprime(zs[-l])
 			deltas[-l] = deltacurr
 
 			bret[-l] = deltacurr
